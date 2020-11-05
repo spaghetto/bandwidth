@@ -8,20 +8,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+var Namespace = "bandwidth"
+
 var errCount = promauto.NewCounter(prometheus.CounterOpts{
-	Namespace: "bandwidth",
+	Namespace: Namespace,
 	Name:      "collect_errors_total",
 	Help:      "Total number of failed collections",
 })
 
 var collectCount = promauto.NewCounter(prometheus.CounterOpts{
-	Namespace: "bandwidth",
+	Namespace: Namespace,
 	Name:      "collects_total",
 	Help:      "Count of collects",
 })
 
 var collectDuration = promauto.NewGauge(prometheus.GaugeOpts{
-	Namespace: "bandwidth",
+	Namespace: Namespace,
 	Name:      "collect_duration_seconds",
 	Help:      "Duration of last collection",
 })
