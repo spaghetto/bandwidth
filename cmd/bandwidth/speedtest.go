@@ -31,7 +31,5 @@ func Test(serverID string) (*TestResult, error) {
 		return nil, fmt.Errorf("Parsing speedtest output: '%w'", err)
 	}
 
-	fmt.Print(buf.Bytes())
-
 	return &result, nil
 }
