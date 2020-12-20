@@ -1,9 +1,18 @@
 FROM golang as builder
 ADD . /app
 WORKDIR /app
-RUN make static
+RUN make bandwidth
+
+FROM debian as ookla
+RUN apt-get update && \
+    apt-get install -y apt-transport-https ca-certificates gnupg2
+
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 && \
+    echo "deb https://ookla.bintray.com/debian generic main" | tee /etc/apt/sources.list.d/speedtest.list && \
+    apt-get update && \
+    apt-get install -y speedtest
 
 FROM alpine
-COPY --from=builder /app/bandwidth_exporter /usr/local/bin/bandwidth_exporter
-RUN apk add --no-cache speedtest-cli
-ENTRYPOINT ["/usr/local/bin/bandwidth_exporter"]
+COPY --from=builder /app/bandwidth-exporter /usr/local/bin/bandwidth-exporter
+COPY --from=ookla /usr/bin/speedtest /usr/bin/speedtest
+ENTRYPOINT ["/usr/local/bin/bandwidth-exporter"]

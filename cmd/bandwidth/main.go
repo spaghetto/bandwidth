@@ -30,6 +30,12 @@ var latency = promauto.NewGauge(prometheus.GaugeOpts{
 	Help:      "Measured latency (ping) in seconds",
 })
 
+var info = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Namespace: "bandwidth",
+	Name:      "info",
+	Help:      "Metadata gathered during the Speedtest",
+}, []string{"isp"})
+
 func main() {
 	cmd := &cli.Command{
 		Use: "speed-exporter",
@@ -45,9 +51,11 @@ func main() {
 				return err
 			}
 
-			transmitRate.Set(result.Upload)
-			receiveRate.Set(result.Download)
-			latency.Set(result.Ping)
+			transmitRate.Set(result.Upload.Bandwidth)
+			receiveRate.Set(result.Download.Bandwidth)
+			latency.Set(result.Ping.Latency)
+
+			info.WithLabelValues(result.ISP).Set(1)
 
 			return nil
 		})
