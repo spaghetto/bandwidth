@@ -16,6 +16,9 @@ bandwidth:
 bandwidth-docker:
 	docker build -t shorez/bandwidth_exporter -f ./cmd/bandwidth/Dockerfile .
 
+bandwidth-cross:
+	docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t shorez/bandwidth_exporter -f ./cmd/bandwidth/Dockerfile --push .
+
 pageload:
 	CGO_ENABLED=0 go build -ldflags=${LDFLAGS} -o pageload-exporter ./cmd/pageload
 

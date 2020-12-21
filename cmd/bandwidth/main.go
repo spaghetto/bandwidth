@@ -15,13 +15,13 @@ import (
 var transmitRate = promauto.NewGauge(prometheus.GaugeOpts{
 	Namespace: "bandwidth",
 	Name:      "transmit_rate_bits",
-	Help:      "Measured transmit (upload) rate in bytes per second",
+	Help:      "Measured transmit (upload) rate in bits per second",
 })
 
 var receiveRate = promauto.NewGauge(prometheus.GaugeOpts{
 	Namespace: "bandwidth",
 	Name:      "receive_rate_bits",
-	Help:      "Measured receive (download) rate in bytes per second",
+	Help:      "Measured receive (download) rate in bits per second",
 })
 
 var latency = promauto.NewGauge(prometheus.GaugeOpts{
@@ -51,8 +51,8 @@ func main() {
 				return err
 			}
 
-			transmitRate.Set(result.Upload.Bandwidth)
-			receiveRate.Set(result.Download.Bandwidth)
+			transmitRate.Set(result.Upload.Bandwidth * 8)
+			receiveRate.Set(result.Download.Bandwidth * 8)
 			latency.Set(result.Ping.Latency)
 
 			info.WithLabelValues(result.ISP).Set(1)
