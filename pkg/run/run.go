@@ -31,6 +31,8 @@ var collectDuration = promauto.NewGauge(prometheus.GaugeOpts{
 func Every(interval time.Duration, action func() error) {
 	initialSuccess := false
 
+	log.Printf("Running first collect ...")
+
 	for {
 		collectCount.Inc()
 		start := time.Now()
@@ -42,7 +44,7 @@ func Every(interval time.Duration, action func() error) {
 
 		if !initialSuccess {
 			initialSuccess = true
-			log.Println("First collect succeeded. This exporter is ready to go")
+			log.Printf("First collect succeeded. Refreshing every %s", interval)
 		}
 
 		took := time.Since(start)

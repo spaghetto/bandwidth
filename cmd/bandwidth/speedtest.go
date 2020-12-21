@@ -10,12 +10,14 @@ import (
 )
 
 type TestResult struct {
-	Ping     Ping      `json:"ping"`
-	Download Bandwidth `json:"download"`
-	Upload   Bandwidth `json:"upload"`
+	Ping       Ping      `json:"ping"`
+	Download   Bandwidth `json:"download"`
+	Upload     Bandwidth `json:"upload"`
+	PacketLoss float64   `json:"packetLoss"`
 
 	ISP      string `json:"isp"`
 	ErrorMsg string `json:"error"`
+	Iface    Iface  `json:"interface"`
 }
 
 type Ping struct {
@@ -27,6 +29,11 @@ type Bandwidth struct {
 	Bandwidth float64 `josn:"bandwidth"`
 	Bytes     float64 `josn:"bytes"`
 	Elapsed   float64 `josn:"elapsed"`
+}
+
+type Iface struct {
+	Name       string
+	ExternalIP string
 }
 
 func (r TestResult) Error() (bool, error) {
