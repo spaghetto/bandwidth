@@ -43,6 +43,10 @@ func (c *Collector) Set(metrics ...prometheus.Metric) {
 	c.mut.Unlock()
 }
 
+func (c *Collector) Clear() {
+	c.Set()
+}
+
 type GaugeOpts struct {
 	Name      string
 	Namespace string

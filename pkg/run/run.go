@@ -28,8 +28,21 @@ var collectDuration = promauto.NewGauge(prometheus.GaugeOpts{
 	Help:      "Duration of last collection",
 })
 
+var lastSuccess = promauto.NewGauge(prometheus.GaugeOpts{
+	Namespace: Namespace,
+	Name:      "collect_last_success_timestamp_seconds",
+	Help:      "UNIX timestamp of the last successful collection",
+})
+
+var collectInterval = promauto.NewGauge(prometheus.GaugeOpts{
+	Namespace: Namespace,
+	Name:      "collect_interval",
+	Help:      "Interval at with the collection results are refreshed",
+})
+
 func Every(interval time.Duration, action func() error) {
 	initialSuccess := false
+	collectInterval.Set(interval.Seconds())
 
 	log.Printf("Running first collect ...")
 
@@ -40,7 +53,10 @@ func Every(interval time.Duration, action func() error) {
 		if err := action(); err != nil {
 			errCount.Inc()
 			log.Println(err)
+			continue
 		}
+
+		lastSuccess.Set(float64(time.Now().Unix()))
 
 		if !initialSuccess {
 			initialSuccess = true

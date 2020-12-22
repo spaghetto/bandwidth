@@ -66,6 +66,7 @@ func main() {
 		go run.Every(*interval, func() error {
 			result, err := Test(*serverID)
 			if err != nil {
+				c.Clear()
 				return err
 			}
 
