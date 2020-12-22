@@ -18,8 +18,10 @@ func NewRegister() *Collector {
 
 type Collector struct {
 	mut     sync.Mutex
-	metrics []prometheus.Metric
+	metrics Metrics
 }
+
+type Metrics []prometheus.Metric
 
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	prometheus.DescribeByCollect(c, ch)
@@ -41,15 +43,27 @@ func (c *Collector) Set(metrics ...prometheus.Metric) {
 	c.mut.Unlock()
 }
 
-func Gauge(opts prometheus.GaugeOpts, val float64) prometheus.Metric {
+type GaugeOpts struct {
+	Name      string
+	Namespace string
+	Help      string
+
+	// Constant labels
+	ConstLabels prometheus.Labels
+	// Keys for scrape-time labels
+	VariableLabels []string
+}
+
+func Gauge(opts GaugeOpts, val float64, labelValues ...string) prometheus.Metric {
 	return prometheus.MustNewConstMetric(
-		prometheus.NewDesc(opts.Namespace+"_"+opts.Name, opts.Help, nil, opts.ConstLabels),
+		prometheus.NewDesc(opts.Namespace+"_"+opts.Name, opts.Help, opts.VariableLabels, opts.ConstLabels),
 		prometheus.GaugeValue,
 		val,
+		labelValues...,
 	)
 }
 
-func Info(opts prometheus.GaugeOpts, labels prometheus.Labels) prometheus.Metric {
+func Info(opts GaugeOpts, labels prometheus.Labels) prometheus.Metric {
 	opts.ConstLabels = labels
 	return Gauge(opts, 1)
 }

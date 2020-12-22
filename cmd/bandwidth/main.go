@@ -12,31 +12,38 @@ import (
 	"github.com/sh0rez/bandwidth_exporter/pkg/run"
 )
 
-var transmitRate = prometheus.GaugeOpts{
-	Namespace: "bandwidth",
-	Name:      "transmit_rate_bits",
-	Help:      "Measured transmit (upload) rate in bits per second",
+var (
+	TypeMeasured = "measured"
+	TypeExpected = "expected"
+)
+
+var transmitRate = metrics.GaugeOpts{
+	Namespace:      "bandwidth",
+	Name:           "transmit_rate_bits",
+	Help:           "Transmit (upload) rate in bits per second",
+	VariableLabels: []string{"type"},
 }
 
-var receiveRate = prometheus.GaugeOpts{
-	Namespace: "bandwidth",
-	Name:      "receive_rate_bits",
-	Help:      "Measured receive (download) rate in bits per second",
+var receiveRate = metrics.GaugeOpts{
+	Namespace:      "bandwidth",
+	Name:           "receive_rate_bits",
+	Help:           "Receive (download) rate in bits per second",
+	VariableLabels: []string{"type"},
 }
 
-var latency = prometheus.GaugeOpts{
+var latency = metrics.GaugeOpts{
 	Namespace: "bandwidth",
 	Name:      "latency_seconds",
 	Help:      "Measured latency (ping) in seconds",
 }
 
-var packetLoss = prometheus.GaugeOpts{
+var packetLoss = metrics.GaugeOpts{
 	Namespace: "bandwidth",
 	Name:      "packet_loss",
 	Help:      "Packet loss in percent",
 }
 
-var info = prometheus.GaugeOpts{
+var info = metrics.GaugeOpts{
 	Namespace: "bandwidth",
 	Name:      "info",
 	Help:      "Metadata gathered during the Speedtest",
@@ -50,6 +57,9 @@ func main() {
 	interval := cmd.Flags().Duration("interval", time.Minute*30, "Time between measurements. Be aware of network load!")
 	serverID := cmd.Flags().String("server-id", "30593", "Speedtest.net server ID")
 
+	expectDownload := cmd.Flags().Float64("expect-download", 0, "Expected download rate in bits/s")
+	expectUpload := cmd.Flags().Float64("expect-upload", 0, "Expected upload rate in bits/s")
+
 	c := metrics.NewRegister()
 
 	cmd.Run = func(cmd *cli.Command, args []string) error {
@@ -59,9 +69,10 @@ func main() {
 				return err
 			}
 
-			c.Set(
-				metrics.Gauge(transmitRate, result.Upload.Bandwidth*8),
-				metrics.Gauge(receiveRate, result.Download.Bandwidth*8),
+			var m = metrics.Metrics{
+				metrics.Gauge(transmitRate, result.Upload.Bandwidth*8, TypeMeasured),
+				metrics.Gauge(receiveRate, result.Download.Bandwidth*8, TypeMeasured),
+
 				metrics.Gauge(latency, result.Ping.Latency),
 				metrics.Gauge(packetLoss, result.PacketLoss),
 
@@ -69,8 +80,16 @@ func main() {
 					"isp":        result.ISP,
 					"externalIP": result.Iface.ExternalIP,
 				}),
-			)
+			}
 
+			if *expectDownload != 0 {
+				m = append(m, metrics.Gauge(receiveRate, *expectDownload, TypeExpected))
+			}
+			if *expectUpload != 0 {
+				m = append(m, metrics.Gauge(transmitRate, *expectUpload, TypeExpected))
+			}
+
+			c.Set(m...)
 			return nil
 		})
 
