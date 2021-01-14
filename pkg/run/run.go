@@ -1,6 +1,8 @@
 package run
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -28,6 +30,12 @@ var collectDuration = promauto.NewGauge(prometheus.GaugeOpts{
 	Help:      "Duration of last collection",
 })
 
+var collectTimeout = promauto.NewGauge(prometheus.GaugeOpts{
+	Namespace: Namespace,
+	Name:      "collect_timeout_seconds",
+	Help:      "Seconds after which the job is aborted",
+})
+
 var lastSuccess = promauto.NewGauge(prometheus.GaugeOpts{
 	Namespace: Namespace,
 	Name:      "collect_last_success_timestamp_seconds",
@@ -40,33 +48,78 @@ var collectInterval = promauto.NewGauge(prometheus.GaugeOpts{
 	Help:      "Interval at with the collection results are refreshed",
 })
 
-func Every(interval time.Duration, action func() error) {
-	initialSuccess := false
+type Job func(context.Context) error
+
+const MaxTimeout = 5 * time.Minute
+
+func Every(interval time.Duration, job Job) error {
+	timeout := interval - (interval / 10)
+	if timeout > MaxTimeout {
+		timeout = MaxTimeout
+	}
+
 	collectInterval.Set(interval.Seconds())
+	collectTimeout.Set(timeout.Seconds())
 
-	log.Printf("Running first collect ...")
+	log.Printf("Running first collect, timeout is %s", timeout)
 
-	for {
+	// action runs the actual job
+	action := func() bool {
 		collectCount.Inc()
-		start := time.Now()
 
-		if err := action(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		if err := job(ctx); err != nil {
 			errCount.Inc()
 			log.Println(err)
-			continue
+			return false
 		}
 
 		lastSuccess.Set(float64(time.Now().Unix()))
-
-		if !initialSuccess {
-			initialSuccess = true
-			log.Printf("First collect succeeded. Refreshing every %s", interval)
-		}
-
-		took := time.Since(start)
-		collectDuration.Set(took.Seconds())
-
-		time.Sleep(interval - took)
+		return true
 	}
 
+	profile := func() (bool, time.Duration) {
+		start := time.Now()
+		ok := action()
+		took := time.Since(start)
+
+		if ok {
+			collectDuration.Set(took.Seconds())
+		}
+
+		return ok, took
+	}
+
+	// try 5x initially to get it working
+	success := false
+	for i := 0; i <= 5; i++ {
+		ok, took := profile()
+		success = success || ok
+
+		if success {
+			log.Printf("First collect succeeded in %s. Refreshing every %s", took, interval)
+			break
+		}
+	}
+
+	// failed. backoff
+	if !success {
+		return fmt.Errorf("None of the first 5 runs succeeded. Aborting")
+	}
+
+	// did work. wait 1x interval before running on schedule
+	time.Sleep(interval)
+
+	// run on schedule
+	for {
+		ok, took := profile()
+
+		delay := interval - took
+		if !ok {
+			log.Printf("Retrying in %s", delay)
+		}
+		time.Sleep(interval - took)
+	}
 }

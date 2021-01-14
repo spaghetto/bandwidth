@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -63,8 +64,15 @@ func main() {
 	c := metrics.NewRegister()
 
 	cmd.Run = func(cmd *cli.Command, args []string) error {
-		go run.Every(*interval, func() error {
-			result, err := Test(*serverID)
+		go func() {
+			log.Println("Listening on :2112")
+			if err := http.ListenAndServe(":2112", promhttp.Handler()); err != nil {
+				log.Fatalln(err)
+			}
+		}()
+
+		err := run.Every(*interval, func(ctx context.Context) error {
+			result, err := Test(ctx, *serverID)
 			if err != nil {
 				c.Clear()
 				return err
@@ -94,8 +102,11 @@ func main() {
 			return nil
 		})
 
-		log.Println("Listening on :2112")
-		return http.ListenAndServe(":2112", promhttp.Handler())
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	if err := cmd.Execute(); err != nil {

@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
+	"strings"
 )
 
 type TestResult struct {
@@ -44,29 +45,64 @@ func (r TestResult) Error() (bool, error) {
 	return false, errors.New(r.ErrorMsg)
 }
 
-func Test(serverID string) (*TestResult, error) {
+func Test(ctx context.Context, serverID string) (*TestResult, error) {
 	var result TestResult
 
-	cmd := exec.Command("speedtest", // requires Ookla Speedtest, not speedtest-cli
+	cmd := exec.CommandContext(ctx, "speedtest", // requires Ookla Speedtest, not speedtest-cli
 		"-f", "json",
 		"--accept-license", "--accept-gdpr",
 	)
 
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = os.Stderr
+	var sout, serr bytes.Buffer
+	cmd.Stdout = &sout
+	cmd.Stderr = &serr
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("Speedtest failed: '%w'", err)
+		if ctx.Err() == context.DeadlineExceeded {
+			err = context.DeadlineExceeded
+		}
+
+		return nil, testErr{err: err, stderr: serr.String()}
 	}
 
-	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+	if err := json.Unmarshal(sout.Bytes(), &result); err != nil {
 		return nil, fmt.Errorf("Parsing speedtest output: '%w'", err)
 	}
 
 	if ok, err := result.Error(); !ok {
-		return nil, err
+		return nil, testErr{err: err, stderr: serr.String()}
 	}
 
 	return &result, nil
+}
+
+type testErr struct {
+	err    error
+	stderr string
+}
+
+func (e testErr) Error() string {
+	s := "Speedtest failed:\n"
+	s += "  error  = " + indentStr(11, e.err.Error()) + "\n"
+
+	e.stderr = strings.TrimSpace(e.stderr)
+	if len(e.stderr) == 0 {
+		e.stderr = "(empty)"
+	}
+	s += "  stderr = " + indentStr(11, e.stderr)
+
+	return s
+}
+
+func indentStr(n int, s string) string {
+	lines := strings.Split(s, "\n")
+
+	for i := range lines {
+		if i == 0 {
+			continue
+		}
+		lines[i] = strings.Repeat(" ", n) + lines[i]
+	}
+
+	return strings.Join(lines, "\n")
 }
