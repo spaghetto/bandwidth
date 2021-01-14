@@ -62,7 +62,7 @@ func Test(ctx context.Context, serverID string) (*TestResult, error) {
 			err = context.DeadlineExceeded
 		}
 
-		return nil, testErr{err: err, stderr: serr.String()}
+		return nil, testErr{err: err, stderr: serr.String(), stdout: sout.String()}
 	}
 
 	if err := json.Unmarshal(sout.Bytes(), &result); err != nil {
@@ -70,7 +70,7 @@ func Test(ctx context.Context, serverID string) (*TestResult, error) {
 	}
 
 	if ok, err := result.Error(); !ok {
-		return nil, testErr{err: err, stderr: serr.String()}
+		return nil, testErr{err: err, stderr: serr.String(), stdout: sout.String()}
 	}
 
 	return &result, nil
@@ -79,6 +79,7 @@ func Test(ctx context.Context, serverID string) (*TestResult, error) {
 type testErr struct {
 	err    error
 	stderr string
+	stdout string
 }
 
 func (e testErr) Error() string {
@@ -90,6 +91,12 @@ func (e testErr) Error() string {
 		e.stderr = "(empty)"
 	}
 	s += "  stderr = " + indentStr(11, e.stderr)
+
+	e.stdout = strings.TrimSpace(e.stdout)
+	if len(e.stdout) == 0 {
+		e.stdout = "(empty)"
+	}
+	s += "  stdout = " + indentStr(11, e.stderr)
 
 	return s
 }
