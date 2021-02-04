@@ -56,10 +56,11 @@ func main() {
 	}
 
 	interval := cmd.Flags().Duration("interval", time.Minute*30, "Time between measurements. Be aware of network load!")
-	serverID := cmd.Flags().String("server-id", "30593", "Speedtest.net server ID")
 
 	expectDownload := cmd.Flags().Float64("expect-download", 0, "Expected download rate in bits/s")
 	expectUpload := cmd.Flags().Float64("expect-upload", 0, "Expected upload rate in bits/s")
+
+	iface := cmd.Flags().String("interface", "", "Network interface to be used")
 
 	c := metrics.NewRegister()
 
@@ -72,7 +73,7 @@ func main() {
 		}()
 
 		err := run.Every(*interval, func(ctx context.Context) error {
-			result, err := Test(ctx, *serverID)
+			result, err := Test(ctx, *iface)
 			if err != nil {
 				c.Clear()
 				return err

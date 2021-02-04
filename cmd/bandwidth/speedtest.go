@@ -45,12 +45,12 @@ func (r TestResult) Error() (bool, error) {
 	return false, errors.New(r.ErrorMsg)
 }
 
-func Test(ctx context.Context, serverID string) (*TestResult, error) {
+func Test(ctx context.Context, iface string) (*TestResult, error) {
 	var result TestResult
 
 	cmd := exec.CommandContext(ctx, "speedtest", // requires Ookla Speedtest, not speedtest-cli
 		"-f", "json",
-		"--accept-license", "--accept-gdpr",
+		"--accept-license", "--accept-gdpr", "--interface="+iface,
 	)
 
 	var sout, serr bytes.Buffer
