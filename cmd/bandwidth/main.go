@@ -60,14 +60,15 @@ func main() {
 	expectDownload := cmd.Flags().Float64("expect-download", 0, "Expected download rate in bits/s")
 	expectUpload := cmd.Flags().Float64("expect-upload", 0, "Expected upload rate in bits/s")
 
-	iface := cmd.Flags().String("interface", "", "Network interface to be used")
+	iface := cmd.Flags().String("interface", "", "Network interface to measure on")
+	listen := cmd.Flags().String("listen", ":9516", "Network address to bind http server to")
 
 	c := metrics.NewRegister()
 
 	cmd.Run = func(cmd *cli.Command, args []string) error {
 		go func() {
-			log.Println("Listening on :2112")
-			if err := http.ListenAndServe(":2112", promhttp.Handler()); err != nil {
+			log.Println("Listening on", *listen)
+			if err := http.ListenAndServe(*listen, promhttp.Handler()); err != nil {
 				log.Fatalln(err)
 			}
 		}()
