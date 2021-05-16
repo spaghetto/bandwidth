@@ -45,12 +45,12 @@ func (r TestResult) Error() (bool, error) {
 	return false, errors.New(r.ErrorMsg)
 }
 
-func Test(ctx context.Context, iface string) (*TestResult, error) {
+func Test(ctx context.Context) (*TestResult, error) {
 	var result TestResult
 
 	cmd := exec.CommandContext(ctx, "speedtest", // requires Ookla Speedtest, not speedtest-cli
 		"-f", "json",
-		"--accept-license", "--accept-gdpr", "--interface="+iface,
+		"--accept-license", "--accept-gdpr",
 	)
 
 	var sout, serr bytes.Buffer
@@ -90,7 +90,7 @@ func (e testErr) Error() string {
 	if len(e.stderr) == 0 {
 		e.stderr = "(empty)"
 	}
-	s += "  stderr = " + indentStr(11, e.stderr)
+	s += "  stderr = " + indentStr(11, e.stderr) + "\n"
 
 	e.stdout = strings.TrimSpace(e.stdout)
 	if len(e.stdout) == 0 {

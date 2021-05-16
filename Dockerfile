@@ -6,15 +6,14 @@ ARG TARGETARCH
 ENV GOARCH=$TARGETARCH
 ADD . /app
 WORKDIR /app
-RUN make bandwidth
+RUN make build
 
-FROM debian as ookla
-RUN apt-get update && \
-    apt-get install -y apt-transport-https ca-certificates gnupg2
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 379CE192D401AB61 && \
-    echo "deb https://ookla.bintray.com/debian generic main" | tee /etc/apt/sources.list.d/speedtest.list && \
-    apt-get update && \
-    apt-get install -y speedtest
+FROM debian:buster as ookla
+RUN apt-get update && apt-get -y install gnupg2 ca-certificates
+ADD https://packagecloud.io/ookla/speedtest-cli/gpgkey /tmp/gpgkey
+RUN apt-key add /tmp/gpgkey && \
+    echo "deb https://packagecloud.io/ookla/speedtest-cli/debian/ buster main" | tee /etc/apt/sources.list.d/speedtest.list
+RUN apt-get update && apt-get install -y speedtest
 
 FROM alpine
 COPY --from=builder /app/bandwidth-exporter /usr/local/bin/bandwidth-exporter
